@@ -1,0 +1,191 @@
+-- 📦 СОЗДАНИЕ ТАБЛИЦ
+
+create table category (
+	id serial primary key,
+	name varchar(50)
+);
+
+create table status (
+	id serial primary key,
+	name varchar(50)
+);
+
+create table role (
+	id serial primary key,
+	name varchar(50)
+);
+
+create table employees (
+	id serial primary key,
+	login varchar(50),
+	password varchar(255),
+	idRole int,
+	surname varchar(50),
+	name varchar(50),
+	patronymic varchar(50),
+	foreign key (idRole) references role(id)
+);
+
+create table numberFond (
+	id serial primary key,
+	floor int,
+	number int,
+	idCategory int,
+	idStatus int,
+	price money,
+	foreign key (idCategory) references category(id),
+	foreign key (idStatus) references status(id)
+);
+
+create table cleaningSchedule (
+	id serial primary key,
+	dateAndTimeOfCleaning timestamp,
+	idEmployee int,
+	idNumberFond int,
+	foreign key (idEmployee) references employees(id),
+	foreign key (idNumberFond) references numberFond(id)
+);
+
+create table client (
+	id serial primary key,
+	surname varchar(50),
+	name varchar(50),
+	patronymic varchar(50)
+);
+
+create table reservation (
+	id serial primary key,
+	idClient int,
+	idNumberFond int,
+	dateOfEntry date,
+	departureDate date,
+	idStatus int,
+	foreign key (idClient) references client(id),
+	foreign key (idNumberFond) references numberFond(id),
+	foreign key (idStatus) references status(id)
+);
+
+create table service (
+	id serial primary key,
+	name varchar(50),
+	price money,
+	description varchar(50)
+);
+
+create table contract(
+	id serial primary key,
+	idStatus int,
+	idEmployee int,
+	comment varchar(255),
+	idReservation int,
+	idService int,
+	foreign key (idStatus) references status(id),
+	foreign key (idEmployee) references employees(id),
+	foreign key (idReservation) references reservation(id),
+	foreign key (idService) references service(id)
+);
+
+-- 📊 АГРЕГАТНЫЕ ЗАПРОСЫ С ФОРМУЛАМИ
+
+-- 1. Процент загрузки номерного фонда
+-- (кол-во занятых ночей / общее количество ночей * 100)
+SELECT 
+    ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM rooms), 2) AS occupancy_percent
+FROM bookings
+WHERE CURRENT_DATE BETWEEN check_in_date AND check_out_date;
+
+-- 2. ADR (средняя стоимость номера за период)
+SELECT 
+    ROUND(SUM(total_amount) / SUM(DATE_PART('day', check_out_date - check_in_date)), 2) AS adr
+FROM bookings;
+
+-- 3. RevPAR = ADR * Процент загрузки
+WITH 
+    stats AS (
+        SELECT 
+            SUM(total_amount) AS revenue,
+            SUM(DATE_PART('day', check_out_date - check_in_date)) AS nights_sold,
+            (SELECT COUNT(*) FROM rooms) AS total_rooms
+        FROM bookings
+    )
+SELECT 
+    ROUND((revenue / total_rooms), 2) AS revpar
+FROM stats;
+
+-- 🛠 ВСТАВКА ДАННЫХ
+
+INSERT INTO guests (full_name, birth_date, phone, email, passport_number)
+VALUES ('Петров Иван', '1990-01-01', '+7 999 123-45-67', 'ivan@example.com', '1234567890');
+
+INSERT INTO room_types (type_name, price_per_night)
+VALUES ('Одноместный', 2500.00), ('Двухместный', 4000.00);
+
+INSERT INTO rooms (room_number, room_type_id, status)
+VALUES ('101', 1, 'Свободен'), ('102', 2, 'Грязный');
+
+INSERT INTO employees (full_name, role, hire_date)
+VALUES ('Сидорова Мария', 'Уборщица', '2022-06-01');
+
+INSERT INTO bookings (guest_id, room_id, check_in_date, check_out_date, total_amount, payment_status)
+VALUES (1, 1, '2025-04-01', '2025-04-05', 10000.00, TRUE);
+
+INSERT INTO cleaning (room_id, employee_id, cleaning_date, status)
+VALUES (2, 1, '2025-04-06', 'Выполнена');
+
+//mobilephone
+//var regex = @"^\+[0-9]+\s[0-9]{3}\s[0-9]{3}-[0-9]{2}-[0-9]{2}$";
+
+🧱 Элементы управления (Controls)
+<Button Content="Нажми меня" Click="OnClick" Width="100"/>
+<TextBox Watermark="Введите текст" Width="200"/>
+<CheckBox Content="Согласен" IsChecked="True"/>
+<ComboBox Items="{Binding Список}" SelectedItem="{Binding ВыбранныйЭлемент}"/>
+<ListBox Items="{Binding Элементы}" SelectedItem="{Binding ВыбранныйЭлемент}"/>
+
+📐 Контейнеры компоновки (Layout Containers)
+<StackPanel Orientation="Vertical" Spacing="10">
+    <!-- Элементы -->
+</StackPanel>
+
+<WrapPanel Orientation="Horizontal" ItemSpacing="10">
+    <!-- Элементы с автоматическим переносом -->
+</WrapPanel>
+
+<Grid>
+    <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="1*"/>
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+    <!-- Элементы с указанием Grid.Row и Grid.Column -->
+</Grid>
+
+🔗 Привязка данных (Data Binding)
+<TextBlock Text="{Binding Имя}"/>
+<TextBox Text="{Binding Ввод, Mode=TwoWay}"/>
+<CheckBox IsChecked="{Binding Флаг}"/>
+
+📐 Пример использования DataGrid с ручным определением колонок
+<Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+</Application.Styles>
+
+<DataGrid Items="{Binding People}"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          CanUserReorderColumns="True"
+          CanUserResizeColumns="True"
+          CanUserSortColumns="False"
+          GridLinesVisibility="All"
+          BorderThickness="1"
+          BorderBrush="Gray">
+  <DataGrid.Columns>
+    <DataGridTextColumn Header="Имя" Binding="{Binding FirstName}" Width="2*"/>
+    <DataGridTextColumn Header="Фамилия" Binding="{Binding LastName}" Width="2*"/>
+    <DataGridCheckBoxColumn Header="Активен" Binding="{Binding IsActive}" Width="*"/>
+  </DataGrid.Columns>
+</DataGrid>
